@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MilestoneFund</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <h2>MilestoneFund</h2>
+
+  <div class="card">
+    <div class="row">
+      <button id="connectBtn">Connect MetaMask</button>
+
+      <select id="networkSelect">
+        <option value="sepolia">Sepolia</option>
+        <option value="holesky">Holesky</option>
+      </select>
+
+      <input id="crowdfundingAddr" placeholder="Crowdfunding contract address (0x...)" />
+      <button id="saveAddrBtn">Save address</button>
+    </div>
+
+    <div class="muted block">
+      Wallet: <span id="wallet">-</span><br/>
+      Network: <span id="network">-</span><br/>
+      ETH Balance: <span id="ethBal">-</span><br/>
+      Reward Token: <span id="tokenAddr">-</span><br/>
+      Token Balance: <span id="tokenBal">-</span>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h3>Create campaign</h3>
+    <div class="row">
+      <input id="title" placeholder="Title" />
+      <input id="goalEth" placeholder="Goal (ETH), e.g. 0.5" />
+      <input id="durationSec" placeholder="Duration (sec), e.g. 3600" />
+      <input id="milestones" class="wide" placeholder="Milestones ETH, e.g. 0.1,0.2,0.2" />
+      <button id="createBtn">Create</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Campaign actions</h3>
+
+    <div class="row">
+      <input id="campaignId" placeholder="Campaign ID (number)" />
+      <input id="donateEth" placeholder="Donate (ETH), e.g. 0.02" />
+      <button id="donateBtn">Donate</button>
+    </div>
+
+    <div class="row top">
+      <input id="milestoneIndex" placeholder="Milestone index (0..)" />
+      <button id="closeMilestoneBtn">Close milestone</button>
+      <button id="claimBtn">Claim reward</button>
+      <button id="finalizeBtn">Finalize</button>
+      <button id="refreshBtn">Refresh info</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Output</h3>
+    <pre id="out">-</pre>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
