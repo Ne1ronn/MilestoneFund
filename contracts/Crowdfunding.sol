@@ -66,4 +66,16 @@ contract Crowdfunding {
     function getMilestoneCount(uint256 campaignId) external view returns (uint256) {
         return milestones[campaignId].length;
     }
+
+    function contribute(uint256 campaignId) external payable {
+        Campaign storage campaign = campaigns[campaignId];
+
+        require(campaign.active, "Campaign not active");
+        require(block.timestamp < campaign.deadline, "Campaign ended");
+        require(msg.value > 0, "Zero contribution");
+
+        contributions[campaignId][msg.sender] += msg.value;
+        campaign.totalRaised += msg.value;
+    }
+
 }
