@@ -7,18 +7,23 @@ async function main() {
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log("Balance:", hre.ethers.formatEther(balance), "ETH");
 
-  // CrowdfundingMilestones(tokenName, tokenSymbol)
-  const Crowdfunding = await hre.ethers.getContractFactory("CrowdfundingMilestones");
+  const RewardToken = await hre.ethers.getContractFactory("RewardToken");
+  const rewardToken = await RewardToken.deploy();
+  await rewardToken.waitForDeployment();
 
-  const crowdfunding = await Crowdfunding.deploy("Milestone Reward", "MSR");
+  const rewardTokenAddress = await rewardToken.getAddress();
+  console.log("RewardToken deployed:", rewardTokenAddress);
+
+  const Crowdfunding = await hre.ethers.getContractFactory("Crowdfunding");
+  const crowdfunding = await Crowdfunding.deploy(rewardTokenAddress);
   await crowdfunding.waitForDeployment();
 
   const crowdfundingAddress = await crowdfunding.getAddress();
   console.log("Crowdfunding deployed:", crowdfundingAddress);
 
-  // token address stored inside crowdfunding
-  const tokenAddress = await crowdfunding.rewardToken();
-  console.log("RewardToken deployed:", tokenAddress);
+  const tx = await rewardToken.transferOwnership(crowdfundingAddress);
+  await tx.wait();
+  console.log("RewardToken ownership transferred to Crowdfunding");
 }
 
 main().catch((e) => {
