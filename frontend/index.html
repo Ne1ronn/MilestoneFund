@@ -34,6 +34,24 @@
   </div>
 
   <div class="card">
+    <div class="row between">
+      <h3 class="noMargin">Campaigns</h3>
+      <button id="loadCampaignsBtn">Load campaigns</button>
+    </div>
+
+    <div class="row block">
+      <select id="campaignSelect" class="wide">
+        <option value="">— Select campaign —</option>
+      </select>
+      <button id="viewCampaignBtn">View</button>
+    </div>
+
+    <div id="campaignInfo" class="infoBox block">
+      <div class="muted">No campaign selected.</div>
+    </div>
+  </div>
+
+  <div class="card">
     <h3>Create campaign</h3>
     <div class="row">
       <input id="title" placeholder="Title" />

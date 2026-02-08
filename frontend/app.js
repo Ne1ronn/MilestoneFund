@@ -1,264 +1,170 @@
-const CHAIN = {
-  sepolia: { chainIdHex: "0xaa36a7", name: "Sepolia" },
-  holesky: { chainIdHex: "0x4268", name: "Holesky" },
-};
+/* global ethers */
 
-const $ = (id) => document.getElementById(id);
-
-const out = (msg) => { $("out").textContent = String(msg); };
-const setStatus = (msg, ok = true) => {
-  $("status").innerHTML = `<span class="${ok ? "ok" : "bad"}">${msg}</span>`;
-};
-
-let provider = null;
-let signer = null;
-let user = null;
-
-let crowdfunding = null;
-let token = null;
+// ====== CONFIG ======
+const SEPOLIA_CHAIN_ID = 11155111;
+const CROWDFUNDING_ADDRESS = "0x2D945E7b35263036A0abeFd5b9E5d44F0b6A62Ff";
 
 const CROWDFUNDING_ABI = [
   "function rewardToken() view returns (address)",
-  "function campaignsCount() view returns (uint256)",
-  "function milestonesCount(uint256) view returns (uint256)",
-  "function createCampaign(string title,uint256 goal,uint256 durationSeconds,uint256[] milestoneAmounts) returns (uint256)",
+  "function getCampaignCount() view returns (uint256)",
+  "function createCampaign(uint256 _deadline)",
   "function contribute(uint256 campaignId) payable",
-  "function closeMilestone(uint256 campaignId,uint256 milestoneIndex)",
-  "function claimReward(uint256 campaignId)",
-  "function finalize(uint256 campaignId)",
+  "function finalize(uint256 campaignId)"
 ];
 
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
-  "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
 ];
 
-function loadSavedAddress() {
-  const saved = localStorage.getItem("crowdfunding_address");
-  if (saved) $("crowdfundingAddr").value = saved;
-  const net = localStorage.getItem("target_network");
-  if (net && CHAIN[net]) $("networkSelect").value = net;
+// ====== DOM HELPERS ======
+const $ = (id) => document.getElementById(id);
+
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
 }
 
-function saveAddress() {
-  const addr = $("crowdfundingAddr").value.trim();
-  localStorage.setItem("crowdfunding_address", addr);
-  setStatus("Saved contract address");
+function getVal(id) {
+  const el = $(id);
+  return el ? el.value : "";
 }
 
-function saveNetwork() {
-  localStorage.setItem("target_network", $("networkSelect").value);
-}
+// ====== STATE ======
+let provider, signer, userAddress;
+let crowdfunding, token;
 
-async function ensureWallet() {
-  if (!window.ethereum) {
-    setStatus("MetaMask not found", false);
-    throw new Error("MetaMask not found");
-  }
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = await provider.getSigner();
-  user = await signer.getAddress();
-  $("wallet").textContent = user;
-}
-
-async function ensureCorrectNetwork() {
-  const targetKey = $("networkSelect").value;
-  const target = CHAIN[targetKey];
-  if (!target) throw new Error("Unknown network");
-
+// ====== NETWORK CHECK ======
+async function ensureSepolia() {
   const net = await provider.getNetwork();
-  const chainIdHex = "0x" + net.chainId.toString(16);
-
-  $("network").textContent = `${net.name || "unknown"} (chainId ${net.chainId})`;
-
-  if (chainIdHex.toLowerCase() !== target.chainIdHex.toLowerCase()) {
-    setStatus(`Wrong network. Switch MetaMask to ${target.name}.`, false);
-    throw new Error("Wrong network");
-  }
-  setStatus(`Connected to ${target.name}`);
-}
-
-function buildContracts() {
-  const addr = $("crowdfundingAddr").value.trim();
-  if (!ethers.isAddress(addr)) {
-    setStatus("Invalid Crowdfunding address", false);
-    throw new Error("Invalid address");
-  }
-  crowdfunding = new ethers.Contract(addr, CROWDFUNDING_ABI, signer);
-}
-
-async function refreshBalances() {
-  if (!provider || !user) return;
-
-  const eth = await provider.getBalance(user);
-  $("ethBal").textContent = ethers.formatEther(eth);
-
-  if (crowdfunding) {
-    const tokenAddr = await crowdfunding.rewardToken();
-    $("tokenAddr").textContent = tokenAddr;
-
-    token = new ethers.Contract(tokenAddr, ERC20_ABI, provider);
-    const [bal, sym, dec] = await Promise.all([
-      token.balanceOf(user),
-      token.symbol().catch(() => "TOKEN"),
-      token.decimals().catch(() => 18),
-    ]);
-
-    $("tokenBal").textContent = `${ethers.formatUnits(bal, dec)} ${sym}`;
+  const chainId = Number(net.chainId);
+  if (chainId !== SEPOLIA_CHAIN_ID) {
+    throw new Error(`Wrong network (chainId=${chainId}). Switch MetaMask to Sepolia.`);
   }
 }
 
-function parseEthListToWeiArray(csv) {
-  const parts = csv.split(",").map(s => s.trim()).filter(Boolean);
-  if (parts.length === 0) throw new Error("No milestones");
-  return parts.map((p) => ethers.parseEther(p));
+// ====== REFRESH UI ======
+async function refreshUI() {
+  if (!provider || !userAddress || !crowdfunding) return;
+
+  const ethBal = await provider.getBalance(userAddress);
+
+  const tokenAddr = await crowdfunding.rewardToken();
+  token = new ethers.Contract(tokenAddr, ERC20_ABI, provider);
+
+  const [raw, dec, sym] = await Promise.all([
+    token.balanceOf(userAddress),
+    token.decimals().catch(() => 18),
+    token.symbol().catch(() => "TOKEN")
+  ]);
+
+  setText("wallet", userAddress);
+  setText("ethBal", ethers.formatEther(ethBal));
+  setText("tokenBal", `${ethers.formatUnits(raw, dec)} ${sym}`);
 }
 
+// ====== CONNECT ======
 async function connect() {
   try {
-    saveNetwork();
-    await ensureWallet();
-    await ensureCorrectNetwork();
+    if (!window.ethereum) {
+      alert("MetaMask not found");
+      return;
+    }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    userAddress = await signer.getAddress();
 
-    buildContracts();
-    await refreshBalances();
-    out("Ready.");
+    await ensureSepolia();
+
+    crowdfunding = new ethers.Contract(CROWDFUNDING_ADDRESS, CROWDFUNDING_ABI, signer);
+    await refreshUI();
+
+    try {
+      const n = await crowdfunding.getCampaignCount();
+      console.log("Campaigns:", n.toString());
+    } catch {}
+
   } catch (e) {
-    out(e);
+    console.error(e);
+    alert(e?.message || "Connect failed");
   }
 }
 
-async function createCampaign() {
+// ====== ACTIONS (как у сокомандника) ======
+async function createCampaignFromUI() {
   try {
-    if (!crowdfunding) throw new Error("Connect first");
+    if (!crowdfunding) throw new Error("Connect wallet first");
 
-    const title = $("title").value.trim();
-    const goalEth = $("goalEth").value.trim();
-    const durationSec = $("durationSec").value.trim();
-    const msCsv = $("milestones").value.trim();
+    const durationSec = Number(getVal("durationSec") || "0");
+    if (!durationSec || durationSec < 60) throw new Error("Duration must be >= 60 seconds");
 
-    if (!title) throw new Error("Title empty");
-    const goalWei = ethers.parseEther(goalEth);
-    const dur = BigInt(durationSec);
-    const ms = parseEthListToWeiArray(msCsv);
+    const now = Math.floor(Date.now() / 1000);
+    const deadline = now + durationSec;
 
-    setStatus("Sending tx...");
-    const tx = await crowdfunding.createCampaign(title, goalWei, dur, ms);
-    out(`createCampaign tx: ${tx.hash}`);
+    const tx = await crowdfunding.createCampaign(deadline);
     await tx.wait();
-    setStatus("Campaign created ✅");
-    await refreshBalances();
+
+    alert("Campaign created");
+    await refreshUI();
+
   } catch (e) {
-    setStatus("Create failed", false);
-    out(e);
+    console.error(e);
+    alert("Create campaign failed");
   }
 }
 
-async function donate() {
+async function donateFromUI() {
   try {
-    if (!crowdfunding) throw new Error("Connect first");
+    if (!crowdfunding) throw new Error("Connect wallet first");
 
-    const id = BigInt($("campaignId").value.trim());
-    const amountEth = $("donateEth").value.trim();
-    const value = ethers.parseEther(amountEth);
+    const campaignId = Number(getVal("campaignId") || "0");
+    const eth = (getVal("donateEth") || "").trim();
+    if (!eth) throw new Error("Enter ETH amount");
 
-    setStatus("Sending tx...");
-    const tx = await crowdfunding.contribute(id, { value });
-    out(`contribute tx: ${tx.hash}`);
+    const tx = await crowdfunding.contribute(campaignId, {
+      value: ethers.parseEther(eth)
+    });
     await tx.wait();
-    setStatus("Donation sent ✅");
-    await refreshBalances();
+
+    alert("Donation sent");
+    await refreshUI();
+
   } catch (e) {
-    setStatus("Donate failed", false);
-    out(e);
+    console.error(e);
+    alert("Donate failed");
   }
 }
 
-async function closeMilestone() {
+async function finalizeFromUI() {
   try {
-    if (!crowdfunding) throw new Error("Connect first");
+    if (!crowdfunding) throw new Error("Connect wallet first");
 
-    const id = BigInt($("campaignId").value.trim());
-    const idx = BigInt($("milestoneIndex").value.trim());
-
-    setStatus("Sending tx...");
-    const tx = await crowdfunding.closeMilestone(id, idx);
-    out(`closeMilestone tx: ${tx.hash}`);
+    const campaignId = Number(getVal("campaignId") || "0");
+    const tx = await crowdfunding.finalize(campaignId);
     await tx.wait();
-    setStatus("Milestone closed ✅");
-    await refreshBalances();
+
+    alert("Finalized");
+    await refreshUI();
+
   } catch (e) {
-    setStatus("Close milestone failed", false);
-    out(e);
+    console.error(e);
+    alert("Finalize failed");
   }
 }
 
-async function claim() {
-  try {
-    if (!crowdfunding) throw new Error("Connect first");
+// ====== WIRE BUTTONS ======
+function wire() {
+  $("connectBtn")?.addEventListener("click", connect);
+  $("createBtn")?.addEventListener("click", createCampaignFromUI);
+  $("donateBtn")?.addEventListener("click", donateFromUI);
+  $("finalizeBtn")?.addEventListener("click", finalizeFromUI);
 
-    const id = BigInt($("campaignId").value.trim());
-
-    setStatus("Sending tx...");
-    const tx = await crowdfunding.claimReward(id);
-    out(`claimReward tx: ${tx.hash}`);
-    await tx.wait();
-    setStatus("Reward claimed ✅");
-    await refreshBalances();
-  } catch (e) {
-    setStatus("Claim failed", false);
-    out(e);
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => connect());
+    window.ethereum.on("chainChanged", () => connect());
   }
 }
 
-async function finalize() {
-  try {
-    if (!crowdfunding) throw new Error("Connect first");
-
-    const id = BigInt($("campaignId").value.trim());
-
-    setStatus("Sending tx...");
-    const tx = await crowdfunding.finalize(id);
-    out(`finalize tx: ${tx.hash}`);
-    await tx.wait();
-    setStatus("Finalized ✅");
-    await refreshBalances();
-  } catch (e) {
-    setStatus("Finalize failed", false);
-    out(e);
-  }
-}
-
-async function refreshInfo() {
-  try {
-    if (!crowdfunding) throw new Error("Connect first");
-    await refreshBalances();
-    const count = await crowdfunding.campaignsCount();
-    out(`campaignsCount: ${count.toString()}`);
-    setStatus("Refreshed ✅");
-  } catch (e) {
-    setStatus("Refresh failed", false);
-    out(e);
-  }
-}
-
-function wireEthereumEvents() {
-  if (!window.ethereum) return;
-  window.ethereum.on("accountsChanged", () => connect());
-  window.ethereum.on("chainChanged", () => connect());
-}
-
-$("connectBtn").onclick = connect;
-$("saveAddrBtn").onclick = saveAddress;
-$("networkSelect").onchange = saveNetwork;
-$("createBtn").onclick = createCampaign;
-$("donateBtn").onclick = donate;
-$("closeMilestoneBtn").onclick = closeMilestone;
-$("claimBtn").onclick = claim;
-$("finalizeBtn").onclick = finalize;
-$("refreshBtn").onclick = refreshInfo;
-
-loadSavedAddress();
-wireEthereumEvents();
+wire();
