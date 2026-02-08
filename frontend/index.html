@@ -7,85 +7,44 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <h2>MilestoneFund</h2>
 
-  <div class="card">
-    <div class="row">
-      <button id="connectBtn">Connect MetaMask</button>
+<h2>MilestoneFund</h2>
 
-      <select id="networkSelect">
-        <option value="sepolia">Sepolia</option>
-        <option value="holesky">Holesky</option>
-      </select>
+<div class="card">
+  <button id="connectBtn">Connect MetaMask</button>
 
-      <input id="crowdfundingAddr" placeholder="Crowdfunding contract address (0x...)" />
-      <button id="saveAddrBtn">Save address</button>
-    </div>
+  <div class="muted block">
+    Wallet: <span id="wallet">-</span><br/>
+    ETH Balance: <span id="ethBal">-</span><br/>
+    Token Balance: <span id="tokenBal">-</span>
+  </div>
+</div>
 
-    <div class="muted block">
-      Wallet: <span id="wallet">-</span><br/>
-      Network: <span id="network">-</span><br/>
-      ETH Balance: <span id="ethBal">-</span><br/>
-      Reward Token: <span id="tokenAddr">-</span><br/>
-      Token Balance: <span id="tokenBal">-</span>
-    </div>
+<div class="card">
+  <h3>Create campaign</h3>
+  <div class="row">
+    <input id="durationSec" placeholder="Duration (sec)" />
+    <input id="milestones" class="wide" placeholder="Milestones ETH (e.g. 0.1,0.2)" />
+    <button id="createBtn">Create</button>
+  </div>
+</div>
 
-    <div id="status" class="status"></div>
+<div class="card">
+  <h3>Campaign actions</h3>
+
+  <div class="row">
+    <input id="campaignId" placeholder="Campaign ID" />
+    <input id="donateEth" placeholder="Donate ETH" />
+    <button id="donateBtn">Donate</button>
   </div>
 
-  <div class="card">
-    <div class="row between">
-      <h3 class="noMargin">Campaigns</h3>
-      <button id="loadCampaignsBtn">Load campaigns</button>
-    </div>
-
-    <div class="row block">
-      <select id="campaignSelect" class="wide">
-        <option value="">— Select campaign —</option>
-      </select>
-      <button id="viewCampaignBtn">View</button>
-    </div>
-
-    <div id="campaignInfo" class="infoBox block">
-      <div class="muted">No campaign selected.</div>
-    </div>
+  <div class="row">
+    <button id="confirmBtn">Confirm milestone</button>
   </div>
+</div>
 
-  <div class="card">
-    <h3>Create campaign</h3>
-    <div class="row">
-      <input id="title" placeholder="Title" />
-      <input id="goalEth" placeholder="Goal (ETH), e.g. 0.5" />
-      <input id="durationSec" placeholder="Duration (sec), e.g. 3600" />
-      <input id="milestones" class="wide" placeholder="Milestones ETH, e.g. 0.1,0.2,0.2" />
-      <button id="createBtn">Create</button>
-    </div>
-  </div>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="./app.js"></script>
 
-  <div class="card">
-    <h3>Campaign actions</h3>
-
-    <div class="row">
-      <input id="campaignId" placeholder="Campaign ID (number)" />
-      <input id="donateEth" placeholder="Donate (ETH), e.g. 0.02" />
-      <button id="donateBtn">Donate</button>
-    </div>
-
-    <div class="row top">
-      <input id="milestoneIndex" placeholder="Milestone index (0..)" />
-      <button id="closeMilestoneBtn">Close milestone</button>
-      <button id="claimBtn">Claim reward</button>
-      <button id="finalizeBtn">Finalize</button>
-      <button id="refreshBtn">Refresh info</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3>Output</h3>
-    <pre id="out">-</pre>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-  <script src="./app.js"></script>
 </body>
 </html>
